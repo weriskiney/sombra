@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <title> Tamanho da sombra </title>
+   <style>
+		body {
+		text-align: center;
+		}
+
+		form, #time {
+			margin: 0 auto;
+		}
+		h1 {
+		  text-align: center;
+		  font-family: Arial, sans-serif;
+		  color: blue;
+		  margin-bottom: 0px;
+		}
+		h2 {
+		  text-align: center;	
+		  font-family: Arial, sans-serif;
+		  font-weight: bold;
+		  color: blue;
+		  margin-bottom: 30px;
+		  margin-top: 0px;
+		}
+		h3 {
+		  font-family: Arial, sans-serif;
+		  font-size: 16px;
+		  font-weight: bold;
+		  color: blue;
+		  margin-bottom: 10px;
+		}
+		h4 {
+		  text-align: center;
+		  font-family: Arial, sans-serif;
+		  font-size: 12px;
+		  color: blue;
+		  margin-top: 30px;
+		  margin-bottom: 0px;
+		  display: block;
+		  width: 25%;
+		  margin: 0 auto;
+		}
+		form {
+		  width: 500px;
+		  margin: 0 auto;
+		  text-align: left;
+		  font-family: Arial, sans-serif;
+		}
+		p {
+		  font-family: Arial, sans-serif;
+		  word-wrap: break-word;
+		}
+		select {
+		  font-family: Arial, sans-serif;
+		  width: 100%;
+		  padding: 12px;
+		  border: 1px solid #ccc;
+		  border-radius: 4px;
+		  box-sizing: border-box;
+		  margin-top: 6px;
+		  margin-bottom: 16px;
+		  resize: vertical;
+		}
+		input[type=text] {
+		  font-family: Arial, sans-serif;
+		  font-size: 16px;
+		  width: 100%;
+		  height: 25px;
+		  padding: 12px;
+		  border: 1px solid #ccc;
+		  border-radius: 4px;
+		  box-sizing: border-box;
+		  margin-top: 6px;
+		  margin-bottom: 16px;
+		  resize: vertical;
+		}
+		button {
+		  background-color: blue;
+		  color: white;
+		  padding: 6px 10px;
+		  border: none;
+		  border-radius: 4px;
+		  cursor: pointer;
+		  width: 100%;
+		  margin-bottom: 16px;
+		  font-family: Arial, sans-serif;
+		}
+		#submit {
+			width: 100%;
+		  }
+		#stick {
+			max-width: 100%;
+			height: auto;
+		  }
+	</style>
+  </head>
+  <body>
+
+	<img id="stick" src="stick.png" alt="stick">
+	<form>
+		<h3>Altura do bastão em metros (stick height in meters):</h3>
+		<input type="text" id="x" name="x" value="1.00"><br>		
+		<input type="checkbox" id="dst" name="dst">Horário de verão (daylight saving time)<br>
+		<button type="submit" id="submit" style="font-size: 16px">Calcular sombra (Calculate shadow)</button>
+	</form>
+	
+    <h3 id="time"></h3>	
+    <h3 id="timeEn"></h3>	
+
+	<script>
+	  document.getElementById('submit').addEventListener('click', function(event) {
+		stickShadowLength();
+		event.preventDefault();
+	  });
+	</script>	
+	<script>
+		function currentTimeHour(date) {
+			var date = new Date();
+			var hours = date.getHours();
+			var minutes = date.getMinutes() / 60;
+			var seconds = date.getSeconds() / 3600;
+			var total = hours + minutes + seconds;
+			return total;
+		}
+	</script>
+    <script>
+      function stickShadowLength() {
+		var x = document.getElementById("x").value;
+		var y;
+		var H = 0.0; //sun hourly angle
+		var declinacao = 0.0;
+		var z = 0.0;
+        var date = new Date();
+        var time = document.getElementById("time");
+        var day = date.toLocaleDateString();
+        var currentTime = date.toLocaleTimeString();		
+        var currentTimeHour_ = currentTimeHour(date);
+        var longitude = 0;
+		var longitude_hours = 0;
+		var latitude = 0;
+        var timezone = (-1.0)*date.getTimezoneOffset();
+		var dstCheck = document.getElementById("dst");
+			if (dstCheck.checked) {
+				timezone = timezone + 60;
+			}		
+		var timezonehour = timezone/60;
+
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function(position) {
+            longitude = position.coords.longitude;			//graus
+				longitude_hours = longitude / 15; //horas
+			latitude = position.coords.latitude; //graus
+				var latitude_ = latitude * (Math.PI / 180); //rad
+
+            //Calculate EOT
+            var D = getDayOfYear(date);
+            var n = 360/365.24; //graus
+				var n_ = n * (Math.PI / 180); //rad
+            var A = (D+9)*n; //graus
+            var B = A + 0.0167*(360/Math.PI)*Math.sin((D-3)*n_); //graus
+				var B_ = B * (Math.PI / 180); //rad
+				var L_ = 23.44 * (Math.PI / 180); //rad
+			var Cbar_ = Math.atan(Math.tan(B_) / Math.cos(L_)); //rad
+			var Cbar = Cbar_ * (180 / Math.PI); //graus
+            var C = (A - Cbar)/180; //graus
+            var nintC = Math.round(C);
+            var EOT_m = 720*(C-nintC);
+			var	EOT_h = EOT_m * (1/60);
+				EOT_m = EOT_m.toPrecision(3);
+				EOT_h = EOT_h.toPrecision(6);
+				
+            //Calculate H
+			H = parseFloat(currentTimeHour_) + parseFloat(EOT_h) + parseFloat(longitude_hours) - parseFloat(timezonehour) - 12.0; //HORAS
+			
+			var Hgrau = H * (15/1); //graus
+						
+			var H_ = Hgrau * (Math.PI / 180); //rad
+						
+            //Calculate declinação
+			declinacao = -23.44 * Math.cos((D+10)*n_); //graus
+			var declinacao_ = declinacao * (Math.PI / 180); //rad
+			
+            //Calculate z
+			var z_ = Math.acos( Math.sin(declinacao_) * Math.sin(latitude_) + Math.cos(declinacao_) * Math.cos(latitude_) * Math.cos(H_) ); //rad
+			z = z_ * ( 180 / Math.PI ); //graus
+			
+			//calculate a sombra do bastão
+			y = x * Math.tan(z_);
+				y = y.toPrecision(2);
+				
+            //time.innerHTML = "Day: " + day + "<br>dia do ano: " + D + "<br>Time: " 
+			//+ currentTime + "<br>Time(h): " + currentTimeHour_ + "<br>Latitude: " + latitude  + "<br>Longitude: " + longitude + "<br>Longitude(h): " 
+			//+ longitude_hours + "<br>Timezone: " + timezone + "<br>Timezone(h): " + timezonehour + "<br>EOT: " + EOT_h + " horas"
+			//+ "<br>H: " + Hgrau + " graus" + "<br>declinacao: " + declinacao + " graus" + "<br>z: " + z + " graus" + "<br>Altura: " + y + " m";
+			
+			if (y < 0) {
+			
+				time.innerHTML = "Não há sombra à noite." + "<br>" + "Volte novamente pela manhã preferencialmente" + "<br>" + "entre 10h e 14h para resultados mais precisos" + "<br>";
+				timeEn.innerHTML = "There is no shadow during the night." + "<br>" + "Come back tomorrow between" + "<br>" + "10 a.m and 2 p.m for more precise results";
+				
+				} else {
+				
+				time.innerHTML = "O tamanho da sombra (L) agora no seu local deve ser: " + y + " m";				
+				timeEn.innerHTML = "The current length of the shadow (L) at your place should be: " + y + " m";
+			}
+			
+          });
+        } else {
+          time.innerHTML = "Geolocation is not supported by this browser.";
+        }
+      
+	  }
+      document.getElementById("submit").addEventListener("click", stickShadowLength);
+    </script>
+	<script>
+		function getDayOfYear(date) {
+			var start = new Date(date.getFullYear(), 0, 0);
+			var diff = (date - start) + ((start.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000);
+			var oneDay = 1000 * 60 * 60 * 24;
+			return Math.floor(diff / oneDay);
+		}
+	</script>
+  </body>
+</html>
